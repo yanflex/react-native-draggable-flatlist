@@ -10,10 +10,11 @@ import {
   UIManager,
   StatusBar,
   StyleSheet,
+  Dimensions
 } from 'react-native'
 
 // Measure function triggers false positives
-YellowBox.ignoreWarnings(['Warning: isMounted(...) is deprecated'])
+//YellowBox.ignoreWarnings(['Warning: isMounted(...) is deprecated'])
 UIManager.setLayoutAnimationEnabledExperimental && UIManager.setLayoutAnimationEnabledExperimental(true);
 
 const initialState = {
@@ -317,12 +318,13 @@ class SortableFlatList extends Component {
   }
 
   measureContainer = ref => {
+    const screenWidth = Dimensions.get('window').width
     if (ref && this._containerOffset === undefined) {
       // setTimeout required or else dimensions reported as 0
       setTimeout(() => {
         const { horizontal } = this.props
         ref.measure((x, y, width, height, pageX, pageY) => {
-          this._containerOffset = horizontal ? pageX : pageY
+          this._containerOffset = horizontal ? pageX % screenWidth : pageY
           this._containerSize = horizontal ? width : height
         })
       }, 50)
