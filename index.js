@@ -76,6 +76,9 @@ class SortableFlatList extends Component {
         return false
       },
       onMoveShouldSetPanResponder: (evt, gestureState) => {
+        if (this._releaseAnim) {
+          return false
+        }
         const { activeRow } = this.state
         const { horizontal } = this.props
         const { moveX, moveY } = gestureState
@@ -100,6 +103,9 @@ class SortableFlatList extends Component {
       onPanResponderTerminationRequest: ({ nativeEvent }, gestureState) => false,
       onPanResponderRelease: () => {
         const { activeRow, spacerIndex } = this.state
+        if(activeRow == -1) {
+          return
+        }
         const { data, horizontal } = this.props
         const activeMeasurements = this._measurements[activeRow]
         const spacerMeasurements = this._measurements[spacerIndex]
