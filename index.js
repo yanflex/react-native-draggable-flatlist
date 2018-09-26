@@ -9,8 +9,7 @@ import {
   Platform,
   UIManager,
   StatusBar,
-  StyleSheet,
-  Dimensions
+  StyleSheet
 } from 'react-native'
 
 // Measure function triggers false positives
@@ -324,15 +323,23 @@ class SortableFlatList extends Component {
   }
 
   measureContainer = ref => {
-    const screenWidth = Dimensions.get('window').width
     if (ref && this._containerOffset === undefined) {
+
+      measure = (ref, curX, curY) => {
+        ref.measure((x, y, width, height, pageX, pageY) => {
+          if(curX != pageX || curY != pageY) {
+            setTimeout(() => measure(ref, pageX, pageY), 25)
+          } else {
+            const { horizontal } = this.props
+            this._containerOffset = horizontal ? pageX : pageY
+            this._containerSize = horizontal ? width : height  
+          }
+        })
+      }
+    
       // setTimeout required or else dimensions reported as 0
       setTimeout(() => {
-        const { horizontal } = this.props
-        ref.measure((x, y, width, height, pageX, pageY) => {
-          this._containerOffset = horizontal ? pageX % screenWidth : pageY
-          this._containerSize = horizontal ? width : height
-        })
+        measure(ref, NaN, NaN)
       }, 50)
     }
   }
@@ -351,8 +358,9 @@ class SortableFlatList extends Component {
       <View
         onLayout={e => {
           console.log('layout', e.nativeEvent)
+          this.measureContainer(this.refContainer)
         }}
-        ref={this.measureContainer}
+        ref={ref => this.refContainer = ref}
         {...this._panResponder.panHandlers}
         style={styles.wrapper} // Setting { opacity: 1 } fixes Android measurement bug: https://github.com/facebook/react-native/issues/18034#issuecomment-368417691
       >
