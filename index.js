@@ -85,7 +85,9 @@ class SortableFlatList extends Component {
 
           this._androidStatusBarOffset = (isTranslucent || isHidden) ? StatusBar.currentHeight : 0
         }
-        this._offset.setValue((this._additionalOffset + this._containerOffset - this._androidStatusBarOffset) * -1)
+        if(this._containerOffset != undefined) {
+          this._offset.setValue((this._additionalOffset + this._containerOffset - this._androidStatusBarOffset) * -1)
+        }
         return false
       },
       onMoveShouldSetPanResponder: (evt, gestureState) => {
@@ -116,9 +118,6 @@ class SortableFlatList extends Component {
       onPanResponderTerminationRequest: ({ nativeEvent }, gestureState) => false,
       onPanResponderRelease: () => {
         const { activeRow, spacerIndex } = this.state
-        if(activeRow == -1) {
-          return
-        }
         const { data, horizontal } = this.props
         const activeMeasurements = this._measurements[activeRow]
         const spacerMeasurements = this._measurements[spacerIndex]
@@ -253,27 +252,34 @@ class SortableFlatList extends Component {
   measureItem = (index) => {
     const { activeRow } = this.state
     const { horizontal } = this.props
-    // setTimeout required or else dimensions reported as 0
-    !!this._refs[index] && setTimeout(() => {
+    let measureInWin = (index, curX, curY) => {
       try {
         // Using stashed ref prevents measuring an unmounted componenet, which throws an error
-        !!this._refs[index] && this._refs[index].measureInWindow(((x, y, width, height) => {
-          if ((width || height) && activeRow === -1) {
-            const ypos = y + this._scrollOffset
-            const xpos = x + this._scrollOffset
-            const pos = horizontal ? xpos : ypos
-            const size = horizontal ? width : height
-            const rowMeasurements = { y: ypos, x: xpos, width, height }
-            this._measurements[index] = rowMeasurements
-            for (let i = Math.floor(pos); i < pos + size; i++) {
-              this._pixels[i] = index
+        !!this._refs[index] && this._refs[index].measureInWindow((x, y, width, height) => {
+          if(curX != x || curY != y) {
+            setTimeout(() => measureInWin(index, x, y), 25)
+          } else {
+            if ((width || height) && activeRow === -1) {
+              const ypos = y + this._scrollOffset
+              const xpos = x + this._scrollOffset
+              const pos = horizontal ? xpos : ypos
+              const size = horizontal ? width : height
+              const rowMeasurements = { y: ypos, x: xpos, width, height }
+              this._measurements[index] = rowMeasurements
+              console.log('measure item: ', rowMeasurements, ', index: ', index)
+              for (let i = Math.floor(pos); i < pos + size; i++) {
+                this._pixels[i] = index
+              }
             }
           }
-        }))
+        })
       } catch (e) {
         console.log('## measure error -- index: ', index, activeRow, this._refs[index], e)
       }
-    }, 100)
+    }
+
+    // setTimeout required or else dimensions reported as 0    
+    !!this._refs[index] && setTimeout(() => measureInWin(index, NaN, NaN), 50)
   }
 
   move = (hoverComponent, index) => {
@@ -349,7 +355,7 @@ class SortableFlatList extends Component {
   measureContainer = ref => {
     if (ref && this._containerOffset === undefined) {
 
-      measure = (ref, curX, curY) => {
+      let measure = (ref, curX, curY) => {
         ref.measure((x, y, width, height, pageX, pageY) => {
           if(curX != pageX || curY != pageY) {
             setTimeout(() => measure(ref, pageX, pageY), 25)
@@ -357,6 +363,10 @@ class SortableFlatList extends Component {
             const { horizontal } = this.props
             this._containerOffset = horizontal ? pageX : pageY
             this._containerSize = horizontal ? width : height  
+            console.log('measure container x: ', x, ', y:', y, ', pageX: ', pageX, ', pageY:', pageY, ', width:', width, ', height:', height);
+            if(this._offset.value != (this._additionalOffset + this._containerOffset - this._androidStatusBarOffset) * -1) {
+              this._offset.setValue((this._additionalOffset + this._containerOffset - this._androidStatusBarOffset) * -1)
+            }
           }
         })
       }
